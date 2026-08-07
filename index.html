@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NOMAD SYSTEMS // ERP & CONTRACT GEN</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- SDKs DO FIREBASE -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #07090e;
+      --panel-bg: rgba(16, 20, 31, 0.9);
+      --neon-cyan: #00f0ff;
+      --neon-pink: #ff0055;
+      --neon-yellow: #fcee0a;
+      --neon-green: #00ff66;
+      --text-main: #e2e8f0;
+      --text-muted: #8a99ad;
+      --border-glow: rgba(0, 240, 255, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Rajdhani', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(0, 240, 255, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(255, 0, 85, 0.05) 0%, transparent 40%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* HEADER & LOGO */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid var(--neon-cyan);
+      padding-bottom: 12px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 20px rgba(0, 240, 255, 0.15);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+    }
+
+    .brand-logo-img {
+      height: 48px;
+      width: auto;
+      max-width: 320px;
+      object-fit: contain;
+      filter: invert(1) drop-shadow(0 0 8px var(--neon-cyan));
+      mix-blend-mode: screen;
+    }
+
+    .brand-fallback-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.8rem;
+      letter-spacing: 2px;
+      color: #fff;
+      text-shadow: 0 0 8px var(--neon-cyan);
+    }
+    .brand-fallback-title span { color: var(--neon-pink); }
+
+    /* NAV TABS */
+    .nav-tabs {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid var(--border-glow);
+      color: var(--text-muted);
+      padding: 10px 20px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s ease;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+
+    .tab-btn.active, .tab-btn:hover {
+      background: rgba(0, 240, 255, 0.1);
+      border-color: var(--neon-cyan);
+      color: var(--neon-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+    }
+
+    /* CONTAINER */
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .section-content {
+      display: none;
+    }
+
+    .section-content.active {
+      display: block;
+    }
+
+    .actions-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+
+    .btn {
+      background: transparent;
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      padding: 10px 20px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.2s ease;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    }
+
+    .btn:hover {
+      background: var(--neon-cyan);
+      color: #000;
+      box-shadow: 0 0 15px var(--neon-cyan);
+    }
+
+    .btn-pink {
+      border-color: var(--neon-pink);
+      color: var(--neon-pink);
+    }
+    .btn-pink:hover {
+      background: var(--neon-pink);
+      color: #fff;
+      box-shadow: 0 0 15px var(--neon-pink);
+    }
+
+    .btn-green {
+      border-color: var(--neon-green);
+      color: var(--neon-green);
+    }
+    .btn-green:hover {
+      background: var(--neon-green);
+      color: #000;
+      box-shadow: 0 0 15px var(--neon-green);
+    }
+
+    /* GRID & CARDS */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-glow);
+      padding: 20px;
+      position: relative;
+      clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+      box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 4px; height: 100%;
+      background: var(--neon-cyan);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+
+    .client-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.2rem;
+      color: #fff;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-radius: 2px;
+    }
+
+    .badge-paid { background: rgba(0, 255, 102, 0.15); color: var(--neon-green); border: 1px solid var(--neon-green); }
+    .badge-pending { background: rgba(255, 0, 85, 0.15); color: var(--neon-pink); border: 1px solid var(--neon-pink); }
+    .badge-active { background: rgba(0, 240, 255, 0.15); color: var(--neon-cyan); border: 1px solid var(--neon-cyan); }
+    .badge-inactive { background: rgba(138, 153, 173, 0.15); color: var(--text-muted); border: 1px solid var(--text-muted); }
+
+    .field-group {
+      margin-bottom: 12px;
+    }
+
+    .field-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .field-value {
+      font-size: 0.95rem;
+      color: #fff;
+      margin-top: 2px;
+    }
+
+    .values-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(0, 240, 255, 0.15);
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .val-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .val-item-label {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .val-item-amount {
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .btn-inline-edit {
+      background: rgba(0, 240, 255, 0.15);
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      border-radius: 2px;
+      margin-left: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-inline-edit:hover {
+      background: var(--neon-cyan);
+      color: #000;
+    }
+
+    .link-item {
+      display: inline-block;
+      color: var(--neon-yellow);
+      text-decoration: none;
+      font-size: 0.85rem;
+      margin-right: 10px;
+      margin-top: 5px;
+      border-bottom: 1px dashed var(--neon-yellow);
+    }
+
+    .link-item:hover {
+      color: #fff;
+      text-shadow: 0 0 5px var(--neon-yellow);
+    }
+
+    .card-actions {
+      margin-top: 15px;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 0.75rem;
+    }
+
+    /* MODAL FORM */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(5px);
+      justify-content: center;
+      align-items: center;
+      z-index: 99;
+    }
+
+    .modal-content {
+      background: var(--bg-dark);
+      border: 2px solid var(--neon-cyan);
+      padding: 30px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal h2 {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--neon-cyan);
+      margin-bottom: 20px;
+    }
+
+    .form-control {
+      margin-bottom: 15px;
+    }
+
+    .form-control label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+
+    .form-control input, .form-control select {
+      width: 100%;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-glow);
+      color: #fff;
+      outline: none;
+    }
+
+    .form-control input:focus, .form-control select:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 8px var(--neon-cyan);
+    }
+
+    /* CONTRACT GENERATOR SECTION */
+    .contract-layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 25px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .contract-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-glow);
+      padding: 20px;
+    }
+
+    /* PAPER PREVIEW (A4 STYLED) */
+    .contract-preview-wrapper {
+      background: #525659;
+      padding: 20px;
+      border-radius: 4px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .contract-document {
+      background: #ffffff;
+      color: #111111;
+      padding: 40px 50px;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 13px;
+      line-height: 1.6;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      min-height: 1000px;
+    }
+
+    .contract-document h2 {
+      text-align: center;
+      font-size: 16px;
+      margin-bottom: 25px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #111;
+      padding-bottom: 10px;
+      color: #000;
+    }
+
+    .contract-document h3 {
+      font-size: 14px;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #000;
+    }
+
+    .contract-document p {
+      margin-bottom: 12px;
+      text-align: justify;
+      color: #222;
+    }
+
+    .contract-document ul {
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+
+    .signatures-block {
+      margin-top: 50px;
+      display: flex;
+      justify-content: space-between;
+      gap: 30px;
+      page-break-inside: avoid;
+    }
+
+    .signature-line {
+      flex: 1;
+      border-top: 1px solid #111;
+      text-align: center;
+      padding-top: 8px;
+      font-size: 12px;
+    }
+
+    /* PRINT STYLES */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .contract-document, .contract-document * {
+        visibility: visible;
+      }
+      .contract-preview-wrapper {
+        padding: 0;
+        background: transparent;
+        overflow: visible;
+        max-height: none;
+      }
+      .contract-document {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 0;
+        box-shadow: none;
+        color: #000 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container no-print">
+    <header>
+      <div class="brand">
+        <img 
+          src="LOGO NOMAD SYSTEMS PTOBCO.jpg" 
+          alt="NOMAD SYSTEMS" 
+          class="brand-logo-img"
+          onerror="this.style.display='none'; document.getElementById('fallbackTitle').style.display='block';"
+        >
+        
+        <h1 id="fallbackTitle" class="brand-fallback-title" style="display: none;">
+          NOMAD <span>SYSTEMS</span>
+        </h1>
+      </div>
+      <div style="font-size: 0.85rem; color: var(--neon-cyan);">[ ERP SYS // CONTRACT GEN ]</div>
+    </header>
+
+    <!-- TAB NAVIGATION -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('clients')">📊 CLIENTES & SUPORTE</button>
+      <button class="tab-btn" onclick="switchTab('contracts')">📜 GERADOR DE CONTRATO</button>
+    </div>
+
+    <!-- SECTION 1: CLIENTS & SUPPORT -->
+    <div id="section-clients" class="section-content active">
+      <div class="actions-bar">
+        <h2>PAINEL DE GERENCIAMENTO</h2>
+        <button class="btn" onclick="openModal()">+ NOVO CLIENTE</button>
+      </div>
+
+      <div class="grid" id="clientsGrid">
+        <!-- Cards dinâmicos entram aqui via Firestore -->
+      </div>
+    </div>
+
+    <!-- SECTION 2: CONTRACT GENERATOR -->
+    <div id="section-contracts" class="section-content">
+      <div class="actions-bar">
+        <h2>GERAR CONTRATO DE PRESTAÇÃO DE SERVIÇOS</h2>
+        <div style="display: flex; gap: 10px;">
+          <button class="btn btn-green" onclick="printContract()">🖨️ GERAR / BAIXAR PDF</button>
+          <button class="btn btn-pink" onclick="copyContractText()">📋 COPIAR TEXTO</button>
+        </div>
+      </div>
+
+      <div class="contract-layout">
+        <!-- FORMULARIO DE DADOS DO CONTRATO -->
+        <div class="form-card">
+          <h3 style="color: var(--neon-cyan); font-family: 'Orbitron'; margin-bottom: 15px; font-size: 1.1rem;">DADOS DO CONTRATO</h3>
+
+          <div class="form-control">
+            <label>PUXAR DE UM CLIENTE SALVO</label>
+            <select id="selectSavedClient" onchange="loadSelectedClientData()">
+              <option value="">-- Selecione ou digite manualmente --</option>
+            </select>
+          </div>
+
+          <h4 style="color: var(--neon-pink); margin: 15px 0 10px 0; font-size: 0.9rem;">CONTRATANTE (CLIENTE)</h4>
+          <div class="form-control">
+            <label>NOME / RAZÃO SOCIAL</label>
+            <input type="text" id="ctrClientName" placeholder="Ex: Arasaka Technologies LTDA" oninput="updateContractPreview()">
+          </div>
+          <div class="form-control">
+            <label>CPF OU CNPJ</label>
+            <input type="text" id="ctrClientDoc" placeholder="00.000.000/0001-00" oninput="updateContractPreview()">
+          </div>
+          <div class="form-control">
+            <label>ENDEREÇO COMPLETO</label>
+            <input type="text" id="ctrClientAddress" placeholder="Rua Cyberpunk, 2077 - Night City" oninput="updateContractPreview()">
+          </div>
+          <div class="form-control">
+            <label>E-MAIL DE CONTATO</label>
+            <input type="email" id="ctrClientEmail" placeholder="contato@cliente.com" oninput="updateContractPreview()">
+          </div>
+
+          <h4 style="color: var(--neon-pink); margin: 15px 0 10px 0; font-size: 0.9rem;">VALORES & CONDIÇÕES</h4>
+          <div class="form-control">
+            <label>VALOR DESENVOLVIMENTO (R$)</label>
+            <input type="text" id="ctrValDev" placeholder="3.500,00" oninput="updateContractPreview()">
+          </div>
+          <div class="form-control">
+            <label>FORMA DE PAGAMENTO DEV.</label>
+            <input type="text" id="ctrPayTerms" placeholder="50% no aceite e 50% na entrega" oninput="updateContractPreview()">
+          </div>
+          <div class="form-control">
+            <label>VALOR MENSAL SUPORTE (R$)</label>
+            <input type="text" id="ctrValSupp" placeholder="350,00" oninput="updateContractPreview()">
+          </div>
+          <div class="form-control">
+            <label>DIA DO VENCIMENTO MENSAL</label>
+            <input type="number" id="ctrDueDay" placeholder="10" min="1" max="31" oninput="updateContractPreview()">
+          </div>
+
+          <h4 style="color: var(--neon-pink); margin: 15px 0 10px 0; font-size: 0.9rem;">SUA EMPRESA (NOMAD)</h4>
+          <div class="form-control">
+            <label>SEU CPF/CNPJ</label>
+            <input type="text" id="ctrNomadDoc" value="00.000.000/0001-00" oninput="updateContractPreview()">
+          </div>
+          <div class="form-control">
+            <label>SUA CIDADE - UF</label>
+            <input type="text" id="ctrNomadCity" value="Atibaia - SP" oninput="updateContractPreview()">
+          </div>
+        </div>
+
+        <!-- PREVIEW EM TEMPO REAL -->
+        <div class="contract-preview-wrapper">
+          <div class="contract-document" id="contractDoc">
+            <!-- Renderizado dinamicamente via JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CADASTRO/EDIÇÃO DE CLIENTE -->
+  <div class="modal no-print" id="clientModal">
+    <div class="modal-content">
+      <h2 id="modalTitle">CADASTRAR CLIENTE</h2>
+      <form id="clientForm">
+        <input type="hidden" id="clientId">
+        
+        <div class="form-control">
+          <label>NOME DO CLIENTE / EMPRESA</label>
+          <input type="text" id="clientName" required placeholder="Ex: Arasaka Corp">
+        </div>
+
+        <div class="form-control">
+          <label>CPF / CNPJ DO CLIENTE</label>
+          <input type="text" id="clientDoc" placeholder="00.000.000/0001-00">
+        </div>
+
+        <div class="form-control">
+          <label>ENDEREÇO COMPLETO</label>
+          <input type="text" id="clientAddress" placeholder="Rua Cyber, 100 - Centro">
+        </div>
+
+        <div class="form-control">
+          <label>E-MAIL</label>
+          <input type="email" id="clientEmail" placeholder="contato@cliente.com">
+        </div>
+
+        <div class="form-control">
+          <label>LINKS DOS PROJETOS (separados por vírgula)</label>
+          <input type="text" id="projectLinks" placeholder="https://link1.com, https://link2.com">
+        </div>
+
+        <!-- VALORES DO PROJETO E SUPORTE -->
+        <div style="display: flex; gap: 10px;">
+          <div class="form-control" style="flex:1;">
+            <label>VALOR DESENVOLVIMENTO (R$)</label>
+            <input type="text" id="valDev" placeholder="Ex: 3.500,00">
+          </div>
+          <div class="form-control" style="flex:1;">
+            <label>VALOR SUPORTE / MÊS (R$)</label>
+            <input type="text" id="valSupp" placeholder="Ex: 350,00">
+          </div>
+        </div>
+
+        <div class="form-control">
+          <label>FORMA DE PAGAMENTO</label>
+          <select id="paymentMethod" onchange="toggleInstallments()">
+            <option value="PIX">PIX</option>
+            <option value="BOLETO">BOLETO</option>
+            <option value="CREDITO">CARTÃO DE CRÉDITO</option>
+            <option value="DEBITO">CARTÃO DE DÉBITO</option>
+            <option value="DINHEIRO">DINHEIRO</option>
+          </select>
+        </div>
+
+        <div class="form-control" id="installmentsGroup" style="display: none;">
+          <label>QUANTIDADE DE PARCELAS (VEZES)</label>
+          <input type="number" id="installments" min="1" max="36" placeholder="Ex: 12">
+        </div>
+
+        <div class="form-control">
+          <label>STATUS DE PAGAMENTO</label>
+          <select id="paymentStatus">
+            <option value="PAGO">PAGO</option>
+            <option value="PENDENTE">PENDENTE</option>
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label>STATUS DO SUPORTE</label>
+          <select id="supportStatus">
+            <option value="ATIVO">ATIVO</option>
+            <option value="INATIVO">INATIVO</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <div class="form-control" style="flex:1;">
+            <label>INÍCIO SUPORTE</label>
+            <input type="date" id="supportStart">
+          </div>
+          <div class="form-control" style="flex:1;">
+            <label>INATIVAÇÃO SUPORTE</label>
+            <input type="date" id="supportEnd">
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="submit" class="btn" style="flex: 1;">SALVAR NO BANCO</button>
+          <button type="button" class="btn btn-pink" onclick="closeModal()">CANCELAR</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // CONFIGURAÇÃO DO SEU FIREBASE (COLE SUA CONFIGURAÇÃO ABAIXO)
+    // =========================================================================
+    const firebaseConfig = {
+    apiKey: "AIzaSyAmnApcgfJpvurJ1HOG_K8rFvThVNvm0Q8",
+    authDomain: "nomad-systems-54ef2.firebaseapp.com",
+    projectId: "nomad-systems-54ef2",
+    storageBucket: "nomad-systems-54ef2.firebasestorage.app",
+    messagingSenderId: "690833900339",
+    appId: "1:690833900339:web:fb05c1d42cfe2d405a3446"
+  };
+
+    // Inicializa o Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Coleção exclusiva e isolada da NOMAD SYSTEMS
+    const clientsRef = db.collection('nomad_clients');
+
+    let clients = [];
+
+    // ESCUTAR BANCO EM TEMPO REAL (SINCRONIZAÇÃO INSTANTÂNEA)
+    clientsRef.onSnapshot((snapshot) => {
+      clients = [];
+      snapshot.forEach((doc) => {
+        clients.push({ id: doc.id, ...doc.data() });
+      });
+      renderClients();
+      populateClientDropdown();
+    }, (error) => {
+      console.error("Erro ao sincronizar Firestore:", error);
+    });
+
+    // EXIBIR OU ESCONDER CAMPO DE PARCELAS
+    function toggleInstallments() {
+      const method = document.getElementById('paymentMethod').value;
+      const group = document.getElementById('installmentsGroup');
+      if (method === 'CREDITO') {
+        group.style.display = 'block';
+      } else {
+        group.style.display = 'none';
+        document.getElementById('installments').value = '';
+      }
+    }
+
+    // NAVEGAÇÃO ENTRE ABAS
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.section-content').forEach(sec => sec.classList.remove('active'));
+
+      if(tabName === 'clients') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('section-clients').classList.add('active');
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('section-contracts').classList.add('active');
+        populateClientDropdown();
+        updateContractPreview();
+      }
+    }
+
+    // REAJUSTE RÁPIDO DO VALOR DO SUPORTE NO FIRESTORE
+    function quickEditSupportValue(id) {
+      const client = clients.find(c => c.id === id);
+      if (!client) return;
+      const currentVal = client.valSupp || "0,00";
+      const newVal = prompt(`Reajustar valor do suporte de ${client.name}:\nValor atual: R$ ${currentVal}`, currentVal);
+      
+      if (newVal !== null && newVal.trim() !== "") {
+        clientsRef.doc(id).update({ valSupp: newVal.trim() })
+          .then(() => console.log("Valor atualizado na nuvem!"))
+          .catch((err) => alert("Erro ao atualizar: " + err.message));
+      }
+    }
+
+    // RENDERIZAR CARDS DOS CLIENTES
+    function renderClients() {
+      const grid = document.getElementById('clientsGrid');
+      grid.innerHTML = '';
+
+      if (clients.length === 0) {
+        grid.innerHTML = '<p style="color: var(--text-muted);">Nenhum cliente cadastrado no banco de dados.</p>';
+        return;
+      }
+
+      clients.forEach((client) => {
+        const linksArray = client.links ? client.links.split(',').map(l => l.trim()) : [];
+        const linksHTML = linksArray.length > 0 && linksArray[0] !== "" 
+          ? linksArray.map((link, i) => `<a href="${link.startsWith('http') ? link : 'https://' + link}" target="_blank" class="link-item">PROJETO #${i+1} ↗</a>`).join('')
+          : '<span style="color: var(--text-muted); font-size: 0.85rem;">Sem links vinculados</span>';
+
+        let methodText = client.paymentMethod || 'PIX';
+        if (methodText === 'CREDITO') {
+          methodText = `CARTÃO DE CRÉDITO ${client.installments ? '(' + client.installments + 'x)' : ''}`;
+        } else if (methodText === 'DEBITO') {
+          methodText = 'CARTÃO DE DÉBITO';
+        }
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="client-name">${client.name}</div>
+            <span class="badge ${client.payment === 'PAGO' ? 'badge-paid' : 'badge-pending'}">${client.payment}</span>
+          </div>
+          
+          <div class="values-box">
+            <div class="val-item">
+              <span class="val-item-label">DESENVOLVIMENTO:</span>
+              <span class="val-item-amount" style="color: var(--neon-cyan);">R$ ${client.valDev || '0,00'}</span>
+            </div>
+            <div class="val-item">
+              <span class="val-item-label">SUPORTE MENSAL:</span>
+              <span class="val-item-amount" style="color: var(--neon-green);">
+                R$ ${client.valSupp || '0,00'}/mês
+                <button class="btn-inline-edit" title="Reajustar Valor de Suporte" onclick="quickEditSupportValue('${client.id}')">✏️ REAJUSTAR</button>
+              </span>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">FORMA DE PAGAMENTO</div>
+            <div class="field-value" style="color: var(--neon-yellow); font-weight: 700;">${methodText}</div>
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">DOCUMENTO / E-MAIL</div>
+            <div class="field-value">${client.doc || 'Não informado'} | ${client.email || 'N/A'}</div>
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">STATUS DO SUPORTE</div>
+            <div class="field-value">
+              <span class="badge ${client.support === 'ATIVO' ? 'badge-active' : 'badge-inactive'}">${client.support}</span>
+              <span style="font-size:0.8rem; color:var(--text-muted); margin-left:5px;">
+                Início: ${client.start || 'N/A'} ${client.end ? '| Fim: ' + client.end : ''}
+              </span>
+            </div>
+          </div>
+
+          <div class="field-group">
+            <div class="field-label">DEMONSTRAÇÃO / LINKS</div>
+            <div class="field-value">${linksHTML}</div>
+          </div>
+
+          <div class="card-actions">
+            <button class="btn btn-sm btn-green" onclick="generateContractForClient('${client.id}')">📜 GERAR CONTRATO</button>
+            <button class="btn btn-sm" onclick="editClient('${client.id}')">EDITAR</button>
+            <button class="btn btn-sm btn-pink" onclick="deleteClient('${client.id}')">EXCLUIR</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    // MODAL HANDLERS
+    function openModal(isEdit = false) {
+      document.getElementById('clientModal').style.display = 'flex';
+      if (!isEdit) {
+        document.getElementById('clientForm').reset();
+        document.getElementById('clientId').value = '';
+        document.getElementById('modalTitle').innerText = 'CADASTRAR CLIENTE';
+        toggleInstallments();
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('clientModal').style.display = 'none';
+    }
+
+    document.getElementById('clientForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const id = document.getElementById('clientId').value;
+      const clientData = {
+        name: document.getElementById('clientName').value,
+        doc: document.getElementById('clientDoc').value,
+        address: document.getElementById('clientAddress').value,
+        email: document.getElementById('clientEmail').value,
+        links: document.getElementById('projectLinks').value,
+        valDev: document.getElementById('valDev').value,
+        valSupp: document.getElementById('valSupp').value,
+        paymentMethod: document.getElementById('paymentMethod').value,
+        installments: document.getElementById('installments').value,
+        support: document.getElementById('supportStatus').value,
+        start: document.getElementById('supportStart').value,
+        end: document.getElementById('supportEnd').value,
+        payment: document.getElementById('paymentStatus').value
+      };
+
+      if (id !== '') {
+        clientsRef.doc(id).update(clientData)
+          .then(() => closeModal())
+          .catch(err => alert("Erro ao atualizar no banco: " + err.message));
+      } else {
+        clientsRef.add(clientData)
+          .then(() => closeModal())
+          .catch(err => alert("Erro ao salvar no banco: " + err.message));
+      }
+    });
+
+    function editClient(id) {
+      const client = clients.find(c => c.id === id);
+      if (!client) return;
+
+      document.getElementById('clientId').value = client.id;
+      document.getElementById('clientName').value = client.name || '';
+      document.getElementById('clientDoc').value = client.doc || '';
+      document.getElementById('clientAddress').value = client.address || '';
+      document.getElementById('clientEmail').value = client.email || '';
+      document.getElementById('projectLinks').value = client.links || '';
+      document.getElementById('valDev').value = client.valDev || '';
+      document.getElementById('valSupp').value = client.valSupp || '';
+      document.getElementById('paymentMethod').value = client.paymentMethod || 'PIX';
+      document.getElementById('installments').value = client.installments || '';
+      document.getElementById('supportStatus').value = client.support || 'ATIVO';
+      document.getElementById('supportStart').value = client.start || '';
+      document.getElementById('supportEnd').value = client.end || '';
+      document.getElementById('paymentStatus').value = client.payment || 'PAGO';
+      
+      toggleInstallments();
+      document.getElementById('modalTitle').innerText = 'EDITAR REGISTRO';
+      openModal(true);
+    }
+
+    function deleteClient(id) {
+      if (confirm('Tem certeza que deseja excluir este cliente do banco de dados?')) {
+        clientsRef.doc(id).delete()
+          .catch(err => alert("Erro ao deletar: " + err.message));
+      }
+    }
+
+    // LÓGICA DO GERADOR DE CONTRATO
+    function populateClientDropdown() {
+      const select = document.getElementById('selectSavedClient');
+      select.innerHTML = '<option value="">-- Selecione ou digite manualmente --</option>';
+      clients.forEach((c) => {
+        select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      });
+    }
+
+    function generateContractForClient(id) {
+      switchTab('contracts');
+      document.getElementById('selectSavedClient').value = id;
+      loadSelectedClientData();
+    }
+
+    function loadSelectedClientData() {
+      const id = document.getElementById('selectSavedClient').value;
+      if (id !== "") {
+        const c = clients.find(item => item.id === id);
+        if (c) {
+          document.getElementById('ctrClientName').value = c.name || '';
+          document.getElementById('ctrClientDoc').value = c.doc || '';
+          document.getElementById('ctrClientAddress').value = c.address || '';
+          document.getElementById('ctrClientEmail').value = c.email || '';
+          
+          if (c.valDev) document.getElementById('ctrValDev').value = c.valDev;
+          if (c.valSupp) document.getElementById('ctrValSupp').value = c.valSupp;
+
+          if (c.paymentMethod) {
+            let payDesc = c.paymentMethod;
+            if (c.paymentMethod === 'CREDITO') {
+              payDesc = `Cartão de Crédito em ${c.installments || 1}x`;
+            } else if (c.paymentMethod === 'DEBITO') {
+              payDesc = 'Cartão de Débito';
+            }
+            document.getElementById('ctrPayTerms').value = payDesc;
+          }
+        }
+      }
+      updateContractPreview();
+    }
+
+    function updateContractPreview() {
+      const name = document.getElementById('ctrClientName').value || '_______________________';
+      const doc = document.getElementById('ctrClientDoc').value || '_______________________';
+      const address = document.getElementById('ctrClientAddress').value || '_______________________';
+      const email = document.getElementById('ctrClientEmail').value || '_______________________';
+
+      const valDev = document.getElementById('ctrValDev').value || '0,00';
+      const payTerms = document.getElementById('ctrPayTerms').value || '50% no aceite e 50% na entrega';
+      const valSupp = document.getElementById('ctrValSupp').value || '0,00';
+      const dueDay = document.getElementById('ctrDueDay').value || '10';
+
+      const nomadDoc = document.getElementById('ctrNomadDoc').value || '00.000.000/0001-00';
+      const nomadCity = document.getElementById('ctrNomadCity').value || 'Atibaia - SP';
+
+      const today = new Date();
+      const dateString = `${today.getDate()} de ${getBrlMonth(today.getMonth())} de ${today.getFullYear()}`;
+
+      const template = `
+        <h2>CONTRATO DE PRESTAÇÃO DE SERVIÇOS E SUPORTE TÉCNICO</h2>
+        
+        <p>Pelo presente instrumento particular, de um lado:</p>
+        
+        <p><strong>CONTRATADA:</strong> <strong>NOMAD SYSTEMS</strong>, inscrita no CNPJ/CPF sob o nº <strong>${nomadDoc}</strong>, com sede comercial em <strong>${nomadCity}</strong>;</p>
+        
+        <p>E, de outro lado:</p>
+        
+        <p><strong>CONTRATANTE:</strong> <strong>${name}</strong>, inscrito(a) no CPF/CNPJ sob o nº <strong>${doc}</strong>, com sede/endereço em <strong>${address}</strong>, e-mail de contato: <strong>${email}</strong>;</p>
+        
+        <p>Têm entre si, justo e contratado, o presente Contrato de Prestação de Serviços, mediante as cláusulas e condições a seguir:</p>
+
+        <h3>CLÁUSULA PRIMEIRA – DO OBJETO</h3>
+        <p>1.1. O presente contrato tem por objeto a prestação de serviços de desenvolvimento de sistema/aplicação web sob medida e prestação de suporte técnico e manutenção preventiva/corretiva, conforme especificações acordadas entre as partes.</p>
+
+        <h3>CLÁUSULA SEGUNDA – DO ESCOPO E ALTERAÇÕES</h3>
+        <p>2.1. O escopo do sistema abrange exclusivamente as funcionalidades descritas na documentação/proposta prévia aprovada pelo CONTRATANTE.</p>
+        <p>2.2. <strong>Solicitações Extras:</strong> Qualquer alteração no fluxo, design ou inclusão de novas telas não previstas originalmente será considerada melhoria de sistema, sujeita a nova avaliação técnica e orçamento adicional.</p>
+
+        <h3>CLÁUSULA TERCEIRA – DO SUPORTE TÉCNICO</h3>
+        <p>3.1. O suporte técnico abrange: correção de falhas e erros (*bugs*), manutenção de estabilidade da aplicação e esclarecimento de dúvidas sobre o uso do sistema.</p>
+        <p>3.2. O suporte <strong>NÃO</strong> abrange criação de novas funcionalidades nem atendimento presencial. O horário de atendimento será em dias úteis, das 08h00 às 18h00.</p>
+
+        <h3>CLÁUSULA QUARTA – VALORES E COND. DE PAGAMENTO</h3>
+        <p>4.1. Pela execução dos serviços objeto deste contrato, o CONTRATANTE pagará à CONTRATADA:</p>
+        <ul>
+          <li><strong>Desenvolvimento do Sistema:</strong> O valor total de <strong>R$ ${valDev}</strong>, pago da seguinte forma: <em>${payTerms}</em>.</li>
+          <li><strong>Suporte Técnico / Mensalidade:</strong> O valor recorrente de <strong>R$ ${valSupp}</strong>, com vencimento no dia <strong>${dueDay}</strong> de cada mês.</li>
+        </ul>
+        <p>4.2. <strong>Inadimplência:</strong> O atraso no pagamento sujeitará o CONTRATANTE à multa moratória de 2% acrescida de juros de 1% ao mês. Atrasos superiores a 5 (cinco) dias corridos autorizam a CONTRATADA a suspender o suporte e o acesso às ferramentas até a regularização.</p>
+
+        <h3>CLÁUSULA SEXTA – VIGÊNCIA E RESCISÃO</h3>
+        <p>6.1. O serviço de suporte vigora por prazo indeterminado, podendo ser cancelado por qualquer das partes mediante aviso prévio por escrito de 30 (trinta) dias.</p>
+
+        <p style="margin-top: 30px; text-align: center;"><strong>${nomadCity}</strong>, <strong>${dateString}</strong>.</p>
+
+        <div class="signatures-block">
+          <div class="signature-line">
+            <strong>NOMAD SYSTEMS</strong><br>CONTRATADA
+          </div>
+          <div class="signature-line">
+            <strong>${name}</strong><br>CONTRATANTE
+          </div>
+        </div>
+      `;
+
+      document.getElementById('contractDoc').innerHTML = template;
+    }
+
+    function getBrlMonth(monthIdx) {
+      const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      return months[monthIdx];
+    }
+
+    function printContract() {
+      window.print();
+    }
+
+    function copyContractText() {
+      const docText = document.getElementById('contractDoc').innerText;
+      navigator.clipboard.writeText(docText).then(() => {
+        alert('O texto do contrato foi copiado para a área de transferência com sucesso!');
+      });
+    }
+
+    // INICIALIZAÇÃO
+    updateContractPreview();
+  </script>
+</body>
+</html>
