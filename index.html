@@ -11,6 +11,7 @@
 <!-- SDKs DO FIREBASE -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 
   <style>
     :root {
@@ -451,6 +452,86 @@
       font-size: 12px;
     }
 
+
+    /* ============================================
+       🔐 TELA DE LOGIN — NOMAD SYSTEMS
+       ============================================ */
+    #loginOverlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(7, 9, 14, 0.98);
+      backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    #loginOverlay.hidden-login { display: none; }
+    .login-box {
+      background: var(--panel-bg);
+      border: 2px solid var(--neon-cyan);
+      padding: 40px 35px;
+      width: 90%;
+      max-width: 380px;
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.3), inset 0 0 20px rgba(0, 240, 255, 0.05);
+      clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+    }
+    .login-box h2 {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--neon-cyan);
+      text-align: center;
+      margin-bottom: 5px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 10px var(--neon-cyan);
+    }
+    .login-box .sub {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-bottom: 25px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .login-box .form-control input:focus {
+      border-color: var(--neon-pink);
+      box-shadow: 0 0 10px var(--neon-pink);
+    }
+    .login-error {
+      background: rgba(255, 0, 85, 0.15);
+      border: 1px solid var(--neon-pink);
+      color: var(--neon-pink);
+      padding: 8px 12px;
+      margin-bottom: 15px;
+      font-size: 0.85rem;
+      text-align: center;
+      display: none;
+    }
+    .login-error.show { display: block; }
+    .user-info-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.8rem;
+      color: var(--neon-cyan);
+    }
+    .user-info-bar .logout-btn {
+      background: transparent;
+      border: 1px solid var(--neon-pink);
+      color: var(--neon-pink);
+      padding: 5px 12px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.7rem;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+    }
+    .user-info-bar .logout-btn:hover {
+      background: var(--neon-pink);
+      color: #fff;
+      box-shadow: 0 0 10px var(--neon-pink);
+    }
+
     /* PRINT STYLES */
     @media print {
       body * {
@@ -496,7 +577,10 @@
           NOMAD <span>SYSTEMS</span>
         </h1>
       </div>
-      <div style="font-size: 0.85rem; color: var(--neon-cyan);">[ ERP SYS // CONTRACT GEN ]</div>
+      <div class="user-info-bar">
+        <span id="userLoggedEmail" style="font-family: Orbitron, sans-serif;">—</span>
+        <button class="logout-btn" onclick="fazerLogoutNomad()">SAIR</button>
+      </div>
     </header>
 
     <!-- TAB NAVIGATION -->
@@ -578,11 +662,11 @@
           <h4 style="color: var(--neon-pink); margin: 15px 0 10px 0; font-size: 0.9rem;">SUA EMPRESA (NOMAD)</h4>
           <div class="form-control">
             <label>SEU CPF/CNPJ</label>
-            <input type="text" id="ctrNomadDoc" value="00.000.000/0001-00" oninput="updateContractPreview()">
+            <input type="text" id="ctrNomadDoc" placeholder="Carregando..." oninput="updateContractPreview()">
           </div>
           <div class="form-control">
             <label>SUA CIDADE - UF</label>
-            <input type="text" id="ctrNomadCity" value="Atibaia - SP" oninput="updateContractPreview()">
+            <input type="text" id="ctrNomadCity" placeholder="Carregando..." oninput="updateContractPreview()">
           </div>
         </div>
 
@@ -707,22 +791,130 @@
     // Inicializa o Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
     // Coleção exclusiva e isolada da NOMAD SYSTEMS
     const clientsRef = db.collection('nomad_clients');
+    const configRef = db.collection('nomad_config').doc('empresa');
 
     let clients = [];
+    let unsubscribeSnapshot = null;
+    let usuarioLogadoNomad = null;
 
-    // ESCUTAR BANCO EM TEMPO REAL (SINCRONIZAÇÃO INSTANTÂNEA)
-    clientsRef.onSnapshot((snapshot) => {
-      clients = [];
-      snapshot.forEach((doc) => {
-        clients.push({ id: doc.id, ...doc.data() });
+    // ============================================
+    // 🔐 FUNÇÕES DE SEGURANÇA — NOMAD SYSTEMS
+    // ============================================
+    
+    // 🛡️ ANTI-XSS — sanitiza QUALQUER texto antes de colocar no HTML
+    function sanitizeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    // 🔑 LOGIN VIA FIREBASE AUTH
+    function fazerLoginNomad(email, senha) {
+      const btn = document.getElementById('btnLogin');
+      const err = document.getElementById('loginError');
+      btn.innerText = '⏳ AUTENTICANDO...';
+      err.classList.remove('show');
+      
+      auth.signInWithEmailAndPassword(email, senha)
+        .catch((error) => {
+          err.innerText = '❌ ' + (error.message || 'E-mail ou senha incorretos');
+          err.classList.add('show');
+          btn.innerText = '🔐 AUTENTICAR';
+        });
+      return false;
+    }
+
+    // 🚪 LOGOUT
+    function fazerLogoutNomad() {
+      if (confirm('Tem certeza que deseja sair do sistema?')) {
+        auth.signOut();
+      }
+    }
+
+    // 👁️ VIGIA O ESTADO DE LOGIN EM TEMPO REAL (ninguém burla pelo F12)
+    auth.onAuthStateChanged((user) => {
+      const overlay = document.getElementById('loginOverlay');
+      const userEmailEl = document.getElementById('userLoggedEmail');
+      
+      if (user) {
+        // ✅ LOGADO DE VERDADE no Firebase — libera tudo
+        usuarioLogadoNomad = user;
+        overlay.classList.add('hidden-login');
+        if (userEmailEl) userEmailEl.innerText = '✓ ' + (user.email || '').toUpperCase();
+        
+        // Liga o listener do banco SÓ DEPOIS de autenticado
+        if (!unsubscribeSnapshot) {
+          unsubscribeSnapshot = clientsRef.onSnapshot((snapshot) => {
+            clients = [];
+            snapshot.forEach((doc) => {
+              clients.push({ id: doc.id, ...doc.data() });
+            });
+            renderClients();
+            populateClientDropdown();
+          }, (error) => {
+            console.error("Erro Firestore:", error);
+          });
+        }
+        
+        // Carrega CNPJ e Cidade do banco (não mais hardcoded)
+        carregarDadosEmpresa();
+        document.getElementById('btnLogin').innerText = '🔐 AUTENTICAR';
+      } else {
+        // ❌ NÃO LOGADO — bloqueia TUDO e limpa dados da memória
+        usuarioLogadoNomad = null;
+        overlay.classList.remove('hidden-login');
+        if (userEmailEl) userEmailEl.innerText = '—';
+        clients = [];
+        renderClients();
+        // Desliga o listener por segurança
+        if (unsubscribeSnapshot) {
+          unsubscribeSnapshot();
+          unsubscribeSnapshot = null;
+        }
+      }
+    });
+
+    // 💾 CARREGA/CREIA DADOS DA EMPRESA NO FIREBASE
+    function carregarDadosEmpresa() {
+      configRef.get().then((doc) => {
+        const docEl = document.getElementById('ctrNomadDoc');
+        const cityEl = document.getElementById('ctrNomadCity');
+        if (doc.exists) {
+          const d = doc.data();
+          if (docEl && d.cnpj) docEl.value = d.cnpj;
+          if (cityEl && d.cidade) cityEl.value = d.cidade;
+        } else {
+          configRef.set({
+            cnpj: '00.000.000/0001-00',
+            cidade: 'Atibaia - SP',
+            atualizadoEm: new Date().toISOString()
+          });
+          if (docEl) docEl.value = '00.000.000/0001-00';
+          if (cityEl) cityEl.value = 'Atibaia - SP';
+        }
+        updateContractPreview();
+      }).catch(() => {
+        document.getElementById('ctrNomadDoc').value = '00.000.000/0001-00';
+        document.getElementById('ctrNomadCity').value = 'Atibaia - SP';
       });
-      renderClients();
-      populateClientDropdown();
-    }, (error) => {
-      console.error("Erro ao sincronizar Firestore:", error);
+    }
+
+    // Conecta o formulário de login
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('loginForm');
+      if (form) {
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const email = document.getElementById('loginEmail').value.trim();
+          const senha = document.getElementById('loginSenha').value;
+          fazerLoginNomad(email, senha);
+        });
+      }
     });
 
     // EXIBIR OU ESCONDER CAMPO DE PARCELAS
@@ -755,6 +947,7 @@
 
     // REAJUSTE RÁPIDO DO VALOR DO SUPORTE NO FIRESTORE
     function quickEditSupportValue(id) {
+      if (!usuarioLogadoNomad) { alert('🔒 Faça login!'); return; }
       const client = clients.find(c => c.id === id);
       if (!client) return;
       const currentVal = client.valSupp || "0,00";
@@ -771,76 +964,83 @@
     function renderClients() {
       const grid = document.getElementById('clientsGrid');
       grid.innerHTML = '';
-
+      
+      if (!usuarioLogadoNomad) {
+        grid.innerHTML = '<p style="color: var(--neon-pink); text-align:center; padding:40px; font-family:Orbitron, sans-serif;">🔒 FAÇA LOGIN PARA VISUALIZAR OS DADOS</p>';
+        return;
+      }
       if (clients.length === 0) {
         grid.innerHTML = '<p style="color: var(--text-muted);">Nenhum cliente cadastrado no banco de dados.</p>';
         return;
       }
-
+      const s = sanitizeHtml;
       clients.forEach((client) => {
-        const linksArray = client.links ? client.links.split(',').map(l => l.trim()) : [];
-        const linksHTML = linksArray.length > 0 && linksArray[0] !== "" 
-          ? linksArray.map((link, i) => `<a href="${link.startsWith('http') ? link : 'https://' + link}" target="_blank" class="link-item">PROJETO #${i+1} ↗</a>`).join('')
-          : '<span style="color: var(--text-muted); font-size: 0.85rem;">Sem links vinculados</span>';
-
-        let methodText = client.paymentMethod || 'PIX';
+        const linksArray = client.links ? String(client.links).split(',').map(l => l.trim()) : [];
+        let linksHTML = '<span style="color: var(--text-muted); font-size: 0.85rem;">Sem links vinculados</span>';
+        if (linksArray.length > 0 && linksArray[0] !== "") {
+          linksHTML = linksArray.map((link, i) => {
+            const rawLink = link.startsWith('http') ? link : 'https://' + link;
+            return `<a href="${s(rawLink)}" target="_blank" class="link-item" rel="noopener noreferrer">PROJETO #${i+1} ↗</a>`;
+          }).join('');
+        }
+        let methodText = s(client.paymentMethod || 'PIX');
         if (methodText === 'CREDITO') {
-          methodText = `CARTÃO DE CRÉDITO ${client.installments ? '(' + client.installments + 'x)' : ''}`;
+          methodText = `CARTÃO DE CRÉDITO ${client.installments ? '(' + s(client.installments) + 'x)' : ''}`;
         } else if (methodText === 'DEBITO') {
           methodText = 'CARTÃO DE DÉBITO';
         }
-
+        const safeId = s(client.id);
+        const paymentBadge = s(client.payment || 'PENDENTE');
+        const badgeClass = client.payment === 'PAGO' ? 'badge-paid' : 'badge-pending';
+        const suppBadge = s(client.support || 'INATIVO');
+        const suppClass = client.support === 'ATIVO' ? 'badge-active' : 'badge-inactive';
+        
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
           <div class="card-header">
-            <div class="client-name">${client.name}</div>
-            <span class="badge ${client.payment === 'PAGO' ? 'badge-paid' : 'badge-pending'}">${client.payment}</span>
+            <div class="client-name">${s(client.name)}</div>
+            <span class="badge ${badgeClass}">${paymentBadge}</span>
           </div>
           
           <div class="values-box">
             <div class="val-item">
               <span class="val-item-label">DESENVOLVIMENTO:</span>
-              <span class="val-item-amount" style="color: var(--neon-cyan);">R$ ${client.valDev || '0,00'}</span>
+              <span class="val-item-amount" style="color: var(--neon-cyan);">R$ ${s(client.valDev || '0,00')}</span>
             </div>
             <div class="val-item">
               <span class="val-item-label">SUPORTE MENSAL:</span>
               <span class="val-item-amount" style="color: var(--neon-green);">
-                R$ ${client.valSupp || '0,00'}/mês
-                <button class="btn-inline-edit" title="Reajustar Valor de Suporte" onclick="quickEditSupportValue('${client.id}')">✏️ REAJUSTAR</button>
+                R$ ${s(client.valSupp || '0,00')}/mês
+                <button class="btn-inline-edit" title="Reajustar Valor de Suporte" onclick="quickEditSupportValue('${safeId}')">✏️ REAJUSTAR</button>
               </span>
             </div>
           </div>
-
           <div class="field-group">
             <div class="field-label">FORMA DE PAGAMENTO</div>
             <div class="field-value" style="color: var(--neon-yellow); font-weight: 700;">${methodText}</div>
           </div>
-
           <div class="field-group">
             <div class="field-label">DOCUMENTO / E-MAIL</div>
-            <div class="field-value">${client.doc || 'Não informado'} | ${client.email || 'N/A'}</div>
+            <div class="field-value">${s(client.doc || 'Não informado')} | ${s(client.email || 'N/A')}</div>
           </div>
-
           <div class="field-group">
             <div class="field-label">STATUS DO SUPORTE</div>
             <div class="field-value">
-              <span class="badge ${client.support === 'ATIVO' ? 'badge-active' : 'badge-inactive'}">${client.support}</span>
+              <span class="badge ${suppClass}">${suppBadge}</span>
               <span style="font-size:0.8rem; color:var(--text-muted); margin-left:5px;">
-                Início: ${client.start || 'N/A'} ${client.end ? '| Fim: ' + client.end : ''}
+                Início: ${s(client.start || 'N/A')} ${client.end ? '| Fim: ' + s(client.end) : ''}
               </span>
             </div>
           </div>
-
           <div class="field-group">
             <div class="field-label">DEMONSTRAÇÃO / LINKS</div>
             <div class="field-value">${linksHTML}</div>
           </div>
-
           <div class="card-actions">
-            <button class="btn btn-sm btn-green" onclick="generateContractForClient('${client.id}')">📜 GERAR CONTRATO</button>
-            <button class="btn btn-sm" onclick="editClient('${client.id}')">EDITAR</button>
-            <button class="btn btn-sm btn-pink" onclick="deleteClient('${client.id}')">EXCLUIR</button>
+            <button class="btn btn-sm btn-green" onclick="generateContractForClient('${safeId}')">📜 GERAR CONTRATO</button>
+            <button class="btn btn-sm" onclick="editClient('${safeId}')">EDITAR</button>
+            <button class="btn btn-sm btn-pink" onclick="deleteClient('${safeId}')">EXCLUIR</button>
           </div>
         `;
         grid.appendChild(card);
@@ -862,9 +1062,14 @@
       document.getElementById('clientModal').style.display = 'none';
     }
 
-    document.getElementById('clientForm').addEventListener('submit', function(e) {
+        document.getElementById('clientForm').addEventListener('submit', function(e) {
       e.preventDefault();
+      if (!usuarioLogadoNomad) { alert('🔒 Faça login primeiro!'); return; }
+      
       const id = document.getElementById('clientId').value;
+      const agora = new Date().toISOString();
+      const quem = usuarioLogadoNomad.email || 'desconhecido';
+      
       const clientData = {
         name: document.getElementById('clientName').value,
         doc: document.getElementById('clientDoc').value,
@@ -878,14 +1083,17 @@
         support: document.getElementById('supportStatus').value,
         start: document.getElementById('supportStart').value,
         end: document.getElementById('supportEnd').value,
-        payment: document.getElementById('paymentStatus').value
+        payment: document.getElementById('paymentStatus').value,
+        updatedAt: agora,
+        updatedBy: quem
       };
-
       if (id !== '') {
         clientsRef.doc(id).update(clientData)
           .then(() => closeModal())
           .catch(err => alert("Erro ao atualizar no banco: " + err.message));
       } else {
+        clientData.createdAt = agora;
+        clientData.createdBy = quem;
         clientsRef.add(clientData)
           .then(() => closeModal())
           .catch(err => alert("Erro ao salvar no banco: " + err.message));
@@ -917,6 +1125,7 @@
     }
 
     function deleteClient(id) {
+      if (!usuarioLogadoNomad) { alert('🔒 Faça login!'); return; }
       if (confirm('Tem certeza que deseja excluir este cliente do banco de dados?')) {
         clientsRef.doc(id).delete()
           .catch(err => alert("Erro ao deletar: " + err.message));
@@ -928,7 +1137,7 @@
       const select = document.getElementById('selectSavedClient');
       select.innerHTML = '<option value="">-- Selecione ou digite manualmente --</option>';
       clients.forEach((c) => {
-        select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+        select.innerHTML += `<option value="${sanitizeHtml(c.id)}">${sanitizeHtml(c.name)}</option>`;
       });
     }
 
