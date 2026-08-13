@@ -788,136 +788,122 @@
     appId: "1:690833900339:web:fb05c1d42cfe2d405a3446"
   };
 
-    // Inicializa o Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-
-    // Coleção exclusiva e isolada da NOMAD SYSTEMS
-    const clientsRef = db.collection('nomad_clients');
-    const configRef = db.collection('nomad_config').doc('empresa');
-
+        // ==================================================
+    // 🔐 NOMAD SYSTEMS — LOGIN + SEGURANÇA (v3 SIMPLIFICADA)
+    // ==================================================
+    let db, auth, clientsRef, configRef;
     let clients = [];
     let unsubscribeSnapshot = null;
     let usuarioLogadoNomad = null;
 
-    // ============================================
-    // 🔐 FUNÇÕES DE SEGURANÇA — NOMAD SYSTEMS
-    // ============================================
-    
-    // 🛡️ ANTI-XSS — sanitiza QUALQUER texto antes de colocar no HTML
+    // 🛡️ ANTI-XSS
     function sanitizeHtml(str) {
       if (str === null || str === undefined) return '';
-      return String(str)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     }
 
-    // 🔑 LOGIN VIA FIREBASE AUTH
+    // 🔐 LOGIN
     function fazerLoginNomad(email, senha) {
-      const btn = document.getElementById('btnLogin');
-      const err = document.getElementById('loginError');
+      var btn = document.getElementById('btnLogin');
+      var err = document.getElementById('loginError');
       btn.innerText = '⏳ AUTENTICANDO...';
       err.classList.remove('show');
-      
-      auth.signInWithEmailAndPassword(email, senha)
-        .catch((error) => {
-          err.innerText = '❌ ' + (error.message || 'E-mail ou senha incorretos');
-          err.classList.add('show');
-          btn.innerText = '🔐 AUTENTICAR';
-        });
-      return false;
+      auth.signInWithEmailAndPassword(email, senha).catch(function(error) {
+        err.innerText = '❌ ' + (error.message || 'E-mail ou senha incorretos');
+        err.classList.add('show');
+        btn.innerText = '🔐 AUTENTICAR';
+      });
     }
 
     // 🚪 LOGOUT
     function fazerLogoutNomad() {
-      if (confirm('Tem certeza que deseja sair do sistema?')) {
-        auth.signOut();
-      }
+      if (confirm('Sair do sistema?')) auth.signOut();
     }
 
-    // 👁️ VIGIA O ESTADO DE LOGIN EM TEMPO REAL (ninguém burla pelo F12)
-    auth.onAuthStateChanged((user) => {
-      const overlay = document.getElementById('loginOverlay');
-      const userEmailEl = document.getElementById('userLoggedEmail');
-      
-      if (user) {
-        // ✅ LOGADO DE VERDADE no Firebase — libera tudo
-        usuarioLogadoNomad = user;
-        overlay.classList.add('hidden-login');
-        if (userEmailEl) userEmailEl.innerText = '✓ ' + (user.email || '').toUpperCase();
-        
-        // Liga o listener do banco SÓ DEPOIS de autenticado
-        if (!unsubscribeSnapshot) {
-          unsubscribeSnapshot = clientsRef.onSnapshot((snapshot) => {
-            clients = [];
-            snapshot.forEach((doc) => {
-              clients.push({ id: doc.id, ...doc.data() });
-            });
-            renderClients();
-            populateClientDropdown();
-          }, (error) => {
-            console.error("Erro Firestore:", error);
-          });
-        }
-        
-        // Carrega CNPJ e Cidade do banco (não mais hardcoded)
-        carregarDadosEmpresa();
-        document.getElementById('btnLogin').innerText = '🔐 AUTENTICAR';
-      } else {
-        // ❌ NÃO LOGADO — bloqueia TUDO e limpa dados da memória
-        usuarioLogadoNomad = null;
-        overlay.classList.remove('hidden-login');
-        if (userEmailEl) userEmailEl.innerText = '—';
-        clients = [];
-        renderClients();
-        // Desliga o listener por segurança
-        if (unsubscribeSnapshot) {
-          unsubscribeSnapshot();
-          unsubscribeSnapshot = null;
-        }
-      }
-    });
-
-    // 💾 CARREGA/CREIA DADOS DA EMPRESA NO FIREBASE
+    // 💾 DADOS DA EMPRESA
     function carregarDadosEmpresa() {
-      configRef.get().then((doc) => {
-        const docEl = document.getElementById('ctrNomadDoc');
-        const cityEl = document.getElementById('ctrNomadCity');
+      configRef.get().then(function(doc) {
+        var de = document.getElementById('ctrNomadDoc');
+        var ce = document.getElementById('ctrNomadCity');
         if (doc.exists) {
-          const d = doc.data();
-          if (docEl && d.cnpj) docEl.value = d.cnpj;
-          if (cityEl && d.cidade) cityEl.value = d.cidade;
+          if (de && doc.data().cnpj) de.value = doc.data().cnpj;
+          if (ce && doc.data().cidade) ce.value = doc.data().cidade;
         } else {
-          configRef.set({
-            cnpj: '00.000.000/0001-00',
-            cidade: 'Atibaia - SP',
-            atualizadoEm: new Date().toISOString()
-          });
-          if (docEl) docEl.value = '00.000.000/0001-00';
-          if (cityEl) cityEl.value = 'Atibaia - SP';
+          configRef.set({cnpj:'00.000.000/0001-00', cidade:'Atibaia - SP', atualizadoEm:new Date().toISOString()});
+          if (de) de.value = '00.000.000/0001-00';
+          if (ce) ce.value = 'Atibaia - SP';
         }
-        updateContractPreview();
-      }).catch(() => {
-        document.getElementById('ctrNomadDoc').value = '00.000.000/0001-00';
-        document.getElementById('ctrNomadCity').value = 'Atibaia - SP';
+        if (typeof updateContractPreview === 'function') updateContractPreview();
+      }).catch(function() {
+        var de = document.getElementById('ctrNomadDoc');
+        var ce = document.getElementById('ctrNomadCity');
+        if (de) de.value = '00.000.000/0001-00';
+        if (ce) ce.value = 'Atibaia - SP';
       });
     }
 
-    // Conecta o formulário de login
-    document.addEventListener('DOMContentLoaded', () => {
-      const form = document.getElementById('loginForm');
+    // 👁️ VIGIA LOGIN
+    function vigiarLogin() {
+      auth.onAuthStateChanged(function(user) {
+        var overlay = document.getElementById('loginOverlay');
+        var emailEl = document.getElementById('userLoggedEmail');
+        var btn = document.getElementById('btnLogin');
+
+        if (user) {
+          // ✅ LOGADO
+          usuarioLogadoNomad = user;
+          overlay.style.display = 'none';
+          if (emailEl) emailEl.innerText = '✓ ' + (user.email || '').toUpperCase();
+          if (btn) btn.innerText = '🔐 AUTENTICAR';
+
+          if (!unsubscribeSnapshot) {
+            unsubscribeSnapshot = clientsRef.onSnapshot(function(snap) {
+              clients = [];
+              snap.forEach(function(d) { clients.push({id:d.id, ...d.data()}); });
+              renderClients();
+              populateClientDropdown();
+            });
+          }
+          carregarDadosEmpresa();
+        } else {
+          // ❌ NÃO LOGADO — BLOQUEIA TUDO
+          usuarioLogadoNomad = null;
+          overlay.style.display = 'flex';
+          if (emailEl) emailEl.innerText = '—';
+          clients = [];
+          renderClients();
+          if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+        }
+      });
+    }
+
+    // ⚡ INICIAR TUDO quando a página carregar
+    window.addEventListener('load', function() {
+      // 1. Inicializa Firebase
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      auth = firebase.auth();
+      clientsRef = db.collection('nomad_clients');
+      configRef = db.collection('nomad_config').doc('empresa');
+
+      // 2. Conecta o form de login
+      var form = document.getElementById('loginForm');
       if (form) {
-        form.addEventListener('submit', (e) => {
+        form.addEventListener('submit', function(e) {
           e.preventDefault();
-          const email = document.getElementById('loginEmail').value.trim();
-          const senha = document.getElementById('loginSenha').value;
-          fazerLoginNomad(email, senha);
+          var em = document.getElementById('loginEmail').value.trim();
+          var se = document.getElementById('loginSenha').value;
+          fazerLoginNomad(em, se);
         });
       }
+
+      // 3. Começa a vigiar o login
+      vigiarLogin();
+      
+      console.log('%c✅ NOMAD SYSTEMS — SEGURO E PRONTO', 'color:#00f0ff;font-weight:bold;font-size:14px;');
     });
 
-    // EXIBIR OU ESCONDER CAMPO DE PARCELAS
+// EXIBIR OU ESCONDER CAMPO DE PARCELAS
     function toggleInstallments() {
       const method = document.getElementById('paymentMethod').value;
       const group = document.getElementById('installmentsGroup');
