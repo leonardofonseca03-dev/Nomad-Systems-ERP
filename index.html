@@ -776,37 +776,38 @@
   </div>
 
   <script>
-    // 🔬 TESTE DEFINITIVO — se esse alert NÃO aparecer, a Vercel NÃO atualizou!
-    alert('✅ ARQUIVO NOVO CARREGADO! (v4)');
-    console.log('%c🚀 NOMAD v4 CARREGADO', 'background:#00f0ff;color:#000;font-weight:bold;padding:4px 12px;border-radius:4px;');
-    
-    // =========================================================================
-    // CONFIGURAÇÃO DO SEU FIREBASE (COLE SUA CONFIGURAÇÃO ABAIXO)
-    // =========================================================================
-    const firebaseConfig = {
-    apiKey: "AIzaSyAmnApcgfJpvurJ1HOG_K8rFvThVNvm0Q8",
-    authDomain: "nomad-systems-54ef2.firebaseapp.com",
-    projectId: "nomad-systems-54ef2",
-    storageBucket: "nomad-systems-54ef2.firebasestorage.app",
-    messagingSenderId: "690833900339",
-    appId: "1:690833900339:web:fb05c1d42cfe2d405a3446"
-  };
+    // 🔬 TESTE v5
+    console.log('%c🚀 NOMAD v5 CARREGADO', 'background:#00f0ff;color:#000;font-weight:bold;padding:4px 12px;border-radius:4px;');
 
-        // ==================================================
-    // 🔐 NOMAD SYSTEMS — LOGIN + SEGURANÇA (v3 SIMPLIFICADA)
+    // ==================================================
+    // 🔐 NOMAD SYSTEMS — SEGURANÇA v5 (IMEDIATA)
     // ==================================================
     let db, auth, clientsRef, configRef;
     let clients = [];
     let unsubscribeSnapshot = null;
     let usuarioLogadoNomad = null;
 
-    // 🛡️ ANTI-XSS
+    // 1. 🛡️ ANTI-XSS
     function sanitizeHtml(str) {
       if (str === null || str === undefined) return '';
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
     }
 
-    // 🔐 LOGIN
+    // 2. 🔐 FORÇA TELA DE LOGIN APARECER (imediatamente, antes de TUDO)
+    (function() {
+      var ov = document.getElementById('loginOverlay');
+      if (ov) {
+        ov.style.setProperty('display', 'flex', 'important');
+        ov.style.setProperty('z-index', '999999', 'important');
+        ov.style.setProperty('opacity', '1', 'important');
+        ov.style.setProperty('visibility', 'visible', 'important');
+        console.log('%c✅ Overlay de login FORÇADO', 'color:#00ff66;font-weight:bold;');
+      } else {
+        console.error('❌ loginOverlay NÃO EXISTE no HTML!');
+      }
+    })();
+
+    // 3. 🔑 LOGIN
     function fazerLoginNomad(email, senha) {
       var btn = document.getElementById('btnLogin');
       var err = document.getElementById('loginError');
@@ -819,12 +820,12 @@
       });
     }
 
-    // 🚪 LOGOUT
+    // 4. 🚪 LOGOUT
     function fazerLogoutNomad() {
       if (confirm('Sair do sistema?')) auth.signOut();
     }
 
-    // 💾 DADOS DA EMPRESA
+    // 5. 💾 DADOS DA EMPRESA
     function carregarDadosEmpresa() {
       configRef.get().then(function(doc) {
         var de = document.getElementById('ctrNomadDoc');
@@ -846,7 +847,7 @@
       });
     }
 
-    // 👁️ VIGIA LOGIN
+    // 6. 👁️ VIGIA LOGIN EM TEMPO REAL
     function vigiarLogin() {
       auth.onAuthStateChanged(function(user) {
         var overlay = document.getElementById('loginOverlay');
@@ -854,12 +855,14 @@
         var btn = document.getElementById('btnLogin');
 
         if (user) {
-          // ✅ LOGADO
+          // ✅ LOGADO — libera o sistema
+          console.log('%c✅ USUÁRIO LOGADO: ' + user.email, 'color:#00ff66;font-weight:bold;');
           usuarioLogadoNomad = user;
           overlay.style.display = 'none';
           if (emailEl) emailEl.innerText = '✓ ' + (user.email || '').toUpperCase();
           if (btn) btn.innerText = '🔐 AUTENTICAR';
 
+          // Liga o onSnapshot SÓ DEPOIS de logar
           if (!unsubscribeSnapshot) {
             unsubscribeSnapshot = clientsRef.onSnapshot(function(snap) {
               clients = [];
@@ -871,8 +874,9 @@
           carregarDadosEmpresa();
         } else {
           // ❌ NÃO LOGADO — BLOQUEIA TUDO
+          console.log('%c🔒 NENHUM USUÁRIO LOGADO — BLOQUEADO', 'color:#ff0055;font-weight:bold;');
           usuarioLogadoNomad = null;
-          overlay.style.display = 'flex';
+          overlay.style.setProperty('display', 'flex', 'important');
           if (emailEl) emailEl.innerText = '—';
           clients = [];
           renderClients();
@@ -881,31 +885,36 @@
       });
     }
 
-    // ⚡ INICIAR TUDO quando a página carregar
-    window.addEventListener('load', function() {
-      // 1. Inicializa Firebase
-      firebase.initializeApp(firebaseConfig);
-      db = firebase.firestore();
-      auth = firebase.auth();
-      clientsRef = db.collection('nomad_clients');
-      configRef = db.collection('nomad_config').doc('empresa');
+    // 7. ⚡ INICIALIZA FIREBASE AGORA (SEM ESPERAR NADA)
+    (function inicializarAGORA() {
+      try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.firestore();
+        auth = firebase.auth();
+        clientsRef = db.collection('nomad_clients');
+        configRef = db.collection('nomad_config').doc('empresa');
+        console.log('%c✅ Firebase inicializado', 'color:#00f0ff;font-weight:bold;');
 
-      // 2. Conecta o form de login
-      var form = document.getElementById('loginForm');
-      if (form) {
-        form.addEventListener('submit', function(e) {
-          e.preventDefault();
-          var em = document.getElementById('loginEmail').value.trim();
-          var se = document.getElementById('loginSenha').value;
-          fazerLoginNomad(em, se);
-        });
+        // Conecta o form de login
+        var form = document.getElementById('loginForm');
+        if (form) {
+          form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var em = document.getElementById('loginEmail').value.trim();
+            var se = document.getElementById('loginSenha').value;
+            fazerLoginNomad(em, se);
+          });
+        }
+
+        // Liga a vigilância
+        vigiarLogin();
+        
+      } catch (e) {
+        console.error('🔥 ERRO FIREBASE:', e);
+        alert('ERRO NO FIREBASE: ' + e.message);
       }
+    })();
 
-      // 3. Começa a vigiar o login
-      vigiarLogin();
-      
-      console.log('%c✅ NOMAD SYSTEMS — SEGURO E PRONTO', 'color:#00f0ff;font-weight:bold;font-size:14px;');
-    });
 
 // EXIBIR OU ESCONDER CAMPO DE PARCELAS
     function toggleInstallments() {
