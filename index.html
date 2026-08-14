@@ -565,6 +565,30 @@
 </head>
 <body>
 
+  <!-- TELA DE LOGIN -->
+  <div id="loginOverlay">
+    <div class="login-box">
+      <h2>NOMAD SYSTEMS</h2>
+      <div class="sub">Acesso Restrito</div>
+      
+      <div id="loginError" class="login-error"></div>
+      
+      <form id="loginForm">
+        <div class="form-control">
+          <label>E-MAIL</label>
+          <input type="email" id="loginEmail" placeholder="seu@email.com" required>
+        </div>
+        <div class="form-control">
+          <label>SENHA</label>
+          <input type="password" id="loginSenha" placeholder="••••••••" required>
+        </div>
+        <button type="submit" id="btnLogin" class="btn btn-green" style="width: 100%; margin-top: 15px;">
+          🔐 AUTENTICAR
+        </button>
+      </form>
+    </div>
+  </div>
+
   <div class="container no-print">
     <header>
       <div class="brand">
@@ -890,6 +914,15 @@
     // 7. ⚡ INICIALIZA FIREBASE AGORA (SEM ESPERAR NADA)
     (function inicializarAGORA() {
       try {
+        const firebaseConfig = {
+          apiKey: "AIzaSyAmnApcgfJpvurJ1HOG_K8rFvThVNvm0Q8",
+          authDomain: "nomad-systems-54ef2.firebaseapp.com",
+          projectId: "nomad-systems-54ef2",
+          storageBucket: "nomad-systems-54ef2.firebasestorage.app",
+          messagingSenderId: "690833900339",
+          appId: "1:690833900339:web:fb05c1d42cfe2d405a3446"
+        };
+
         // Evita erro de app duplicado
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         else { console.log('%c⚠️ Firebase já inicializado, usando instância existente', 'color:#fcee0a;font-weight:bold;'); }
